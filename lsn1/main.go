@@ -24,6 +24,9 @@ var (
 
 	// насколько глубоко нам надо смотреть (например, 10)
 	depthLimit int
+
+	// максимальное время работы, после которого прерываем обработку
+	timeout int
 )
 
 // Как вы помните, функция инициализации стартует первой
@@ -31,6 +34,7 @@ func init() {
 	// задаём и парсим флаги
 	flag.StringVar(&url, "url", "", "url address")
 	flag.IntVar(&depthLimit, "depth", 3, "max depth for run")
+	flag.IntVar(&timeout, "timeout", 10, "timeout in seconds")
 	flag.Parse()
 
 	// Проверяем обязательное условие
@@ -44,11 +48,13 @@ func init() {
 func main() {
 	started := time.Now()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	go watchSignals(cancel)
 	defer cancel()
 
 	crawler := newCrawler(depthLimit)
+
+	go watchDepth(ctx, crawler, 2)
 
 	// создаём канал для результатов
 	results := make(chan crawlResult)
@@ -112,4 +118,18 @@ func watchCrawler(ctx context.Context, results <-chan crawlResult, maxErrors, ma
 	}()
 
 	return readersDone
+}
+
+func watchDepth(ctx context.Context, c *crawler, n int) {
+	ctxSig, stop := signal.NotifyContext(context.Background(), syscall.SIGUSR1)
+	defer stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ctxSig.Done():
+			log.Printf("got signal %q", syscall.SIGUSR1)
+			c.addDepth(n)
+		}
+	}
 }
