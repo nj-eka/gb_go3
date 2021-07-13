@@ -3,9 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/pkg/errors"
 	"sync"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 type crawlResult struct {
@@ -15,8 +16,21 @@ type crawlResult struct {
 
 type crawler struct {
 	sync.Mutex
-	visited  map[string]string
-	maxDepth int
+	visited       map[string]string
+	maxDepth      int
+	maxDepthMutex sync.RWMutex
+}
+
+func (c *crawler) validDepth(depth int) bool {
+	c.maxDepthMutex.RLock()
+	defer c.maxDepthMutex.RUnlock()
+	return depth <= c.maxDepth
+}
+
+func (c *crawler) addDepth(step int) {
+	c.maxDepthMutex.Lock()
+	defer c.maxDepthMutex.Unlock()
+	c.maxDepth += step
 }
 
 func newCrawler(maxDepth int) *crawler {
@@ -38,7 +52,7 @@ func (c *crawler) run(ctx context.Context, url string, results chan<- crawlResul
 
 	default:
 		// проверка глубины
-		if depth >= c.maxDepth {
+		if !c.validDepth(depth) {
 			return
 		}
 
