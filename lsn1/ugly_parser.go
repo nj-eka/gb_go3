@@ -6,9 +6,8 @@ import (
 	"net/http"
 )
 
-// парсим страницу
 func parse(url string) (*html.Node, error) {
-	// что здесь должно быть вместо http.Get? :)
+	// http.Get? :)
 	r, err := http.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("can't get page")
@@ -20,7 +19,6 @@ func parse(url string) (*html.Node, error) {
 	return b, err
 }
 
-// ищем заголовок на странице
 func pageTitle(n *html.Node) string {
 	var title string
 	if n.Type == html.ElementNode && n.Data == "title" {
@@ -35,7 +33,6 @@ func pageTitle(n *html.Node) string {
 	return title
 }
 
-// ищем все ссылки на страницы. Используем мапку чтобы избежать дубликатов
 func pageLinks(links map[string]struct{}, n *html.Node) map[string]struct{} {
 	if links == nil {
 		links = make(map[string]struct{})
@@ -47,7 +44,7 @@ func pageLinks(links map[string]struct{}, n *html.Node) map[string]struct{} {
 				continue
 			}
 
-			// костылик для простоты
+			// todo: resolve workaround
 			if _, ok := links[a.Val]; !ok && len(a.Val) > 2 && a.Val[:2] == "//" {
 				links["http://"+a.Val[2:]] = struct{}{}
 			}
