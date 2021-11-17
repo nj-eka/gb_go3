@@ -16,3 +16,6 @@
 
 *.pdf
 .vscode
+.idea
+log*.*
+*.log
